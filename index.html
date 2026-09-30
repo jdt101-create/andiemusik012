@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스트라빈스키 : 봄의 제전</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #0c0d0e;
+            color: #e1e3e6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 540px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        /* 상단 헤더 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #111315;
+            border: 1px solid #22252a;
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+        .title-group h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .title-group p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: #8a9099;
+            font-family: monospace;
+        }
+        .score-group {
+            display: flex;
+            gap: 20px;
+            text-align: right;
+        }
+        .score-box label {
+            display: block;
+            font-size: 11px;
+            color: #8a9099;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .score-box val {
+            display: block;
+            font-size: 20px;
+            font-weight: 800;
+            color: #e67e22;
+            font-family: monospace;
+        }
+        .score-box.score-main val {
+            color: #ffffff;
+        }
+
+        /* 메인 게임 영역 */
+        .game-wrapper {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background-color: #070709;
+            border: 1px solid #22252a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        /* 오버레이 (스타트 / 게임오버 / 승리) */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(8, 9, 10, 0.94);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            text-align: center;
+            z-index: 10;
+        }
+        .overlay-icon {
+            font-size: 48px;
+            color: #e67e22;
+            margin-bottom: 16px;
+            line-height: 1;
+        }
+        .overlay h2 {
+            margin: 0 0 12px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .overlay p {
+            margin: 0 0 24px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #9aa0a6;
+            max-width: 380px;
+        }
+        .btn-start {
+            background-color: #1e2228;
+            border: 1px solid #3a3f47;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 12px 28px;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-start:hover {
+            background-color: #2b3038;
+            border-color: #4f5561;
+            transform: translateY(-1px);
+        }
+
+        /* 승리 전용 텍스트 스타일 */
+        .secret-code {
+            background-color: #1a2332;
+            border: 1px solid #2980b9;
+            color: #3498db;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        /* 하단 푸터 */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #111315;
+            border: 1px solid #22252a;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 13px;
+        }
+        .info-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #8a9099;
+        }
+        .info-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #e67e22;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .audio-btn {
+            background-color: #1e2228;
+            border: 1px solid #2c313a;
+            color: #d1d5db;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 헤더 UI -->
+    <div class="header">
+        <div class="title-group">
+            <h1>스트라빈스키 : 봄의 제전</h1>
+            <p>The Rite of Spring – Augurs Chord Rhythm</p>
+        </div>
+        <div class="score-group">
+            <div class="score-box">
+                <label>COMBO</label>
+                <val id="comboVal">0</val>
+            </div>
+            <div class="score-box score-main">
+                <label>SCORE</label>
+                <val><span id="scoreVal">0</span> / 100</val>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="540" height="480"></canvas>
+
+        <!-- 오버레이 화면 -->
+        <div id="startOverlay" class="overlay">
+            <div class="overlay-icon">☨</div>
+            <h2>원시 부족의 의식 박자</h2>
+            <p>하단 4개 타겟 레인으로 낙하하는 불꽃 노드를 정확한 타이밍에 클릭/터치하거나 키보드(D, F, J, K)로 눌러 박자를 맞추세요!</p>
+            <button class="btn-start" onclick="startGame()">의식 시작하기 (Touch to Start)</button>
+        </div>
+
+        <div id="winOverlay" class="overlay" style="display: none;">
+            <div class="overlay-icon" style="color: #2ecc71;">🎉</div>
+            <h2>의식 완수 성공!</h2>
+            <div class="secret-code">ZEP으로 돌아가 'Ars nova'를 입력하시오</div>
+            <button class="btn-start" onclick="resetGame()">다시 도전하기</button>
+        </div>
+
+        <div id="loseOverlay" class="overlay" style="display: none;">
+            <div class="overlay-icon" style="color: #e74c3c;">💥</div>
+            <h2>의식 실패</h2>
+            <p>영혼의 불꽃이 모두 소멸되었습니다. 다시 도전하여 원시 리듬을 정복하세요.</p>
+            <button class="btn-start" onclick="resetGame()">다시 도전하기</button>
+        </div>
+    </div>
+
+    <!-- 하단 푸터 -->
+    <div class="footer">
+        <div class="info-text">
+            <span class="info-dot"></span>
+            <span>하단 타겟 레인을 직접 클릭/터치하세요. Target line rhythm timing</span>
+        </div>
+        <button class="audio-btn" id="soundBtn">🔊 소리 켜짐</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scoreVal = document.getElementById('scoreVal');
+    const comboVal = document.getElementById('comboVal');
+    const startOverlay = document.getElementById('startOverlay');
+    const winOverlay = document.getElementById('winOverlay');
+    const loseOverlay = document.getElementById('loseOverlay');
+
+    let score = 0;
+    let combo = 0;
+    let lives = 5;
+    let notes = [];
+    let particles = [];
+    let ratingTexts = [];
+
+    let isGameRunning = false;
+    let audioCtx = null;
+    let bgmInterval = null;
+    let bgmStep = 0;
+
+    const LANE_COUNT = 4;
+    const LANE_WIDTH = canvas.width / LANE_COUNT;
+    const TARGET_Y = canvas.height - 70;
+    const LANE_SYMBOLS = ['Δ', 'Δ', '∇', '∇'];
+    const KEY_MAPPING = ['d', 'f', 'j', 'k']; // 지원 키보드 매핑
+
+    const augursFreqs = [164.81, 207.65, 246.94, 311.13, 370.00, 415.30];
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function startBGM() {
+        if (bgmInterval) return;
+        const rhythmPattern = [
+            { chord: true, duration: 0.18 },
+            { chord: false, duration: 0.1 },
+            { chord: true, duration: 0.12 },
+            { chord: true, duration: 0.2 },
+            { chord: false, duration: 0.1 },
+            { chord: true, duration: 0.15 },
+            { chord: false, duration: 0.1 }
+        ];
+
+        bgmInterval = setInterval(() => {
+            if (!isGameRunning || !audioCtx) return;
+            const p = rhythmPattern[bgmStep % rhythmPattern.length];
+            if (p.chord) {
+                playAugursChord(p.duration);
+            } else {
+                playTimpaniBeat(75, p.duration);
+            }
+            bgmStep++;
+        }, 340);
+    }
+
+    function stopBGM() {
+        if (bgmInterval) {
+            clearInterval(bgmInterval);
+            bgmInterval = null;
+        }
+    }
+
+    function playAugursChord(duration) {
+        augursFreqs.forEach((freq) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        });
+        playTimpaniBeat(110, duration);
+    }
+
+    function playTimpaniBeat(freq, duration) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(25, audioCtx.currentTime + duration + 0.1);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration + 0.1);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration + 0.1);
+    }
+
+    function playHitSound(isPerf) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isPerf ? 280 : 200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    function playMissSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+    }
+
+    function spawnParticles(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 4;
+            particles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: 2 + Math.random() * 3,
+                color: color,
+                alpha: 1,
+                decay: 0.03 + Math.random() * 0.03
+            });
+        }
+    }
+
+    function addRatingText(text, x, y, color) {
+        ratingTexts.push({ text, x, y, color, alpha: 1, vy: -1.0 });
+    }
+
+    function spawnNote() {
+        if (!isGameRunning) return;
+        const lane = Math.floor(Math.random() * LANE_COUNT);
+        const x = lane * LANE_WIDTH + LANE_WIDTH / 2;
+        const speed = 2.8 + Math.random() * 0.8;
+        notes.push({
+            lane: lane,
+            x: x,
+            y: -20,
+            radius: 18,
+            speed: speed
+        });
+    }
+
+    setInterval(spawnNote, 850);
+
+    function triggerLaneHit(laneIndex) {
+        if (!isGameRunning) return;
+
+        let hitFound = false;
+        const laneCenterX = laneIndex * LANE_WIDTH + LANE_WIDTH / 2;
+
+        for (let i = 0; i < notes.length; i++) {
+            let n = notes[i];
+            if (n.lane === laneIndex) {
+                let distToTarget = Math.abs(n.y - TARGET_Y);
+
+                if (distToTarget < 60) {
+                    let addedScore = 10;
+                    let rating = "GOOD!";
+                    let color = "#e67e22";
+                    let isPerf = false;
+
+                    if (distToTarget < 18) {
+                        addedScore = 20;
+                        rating = "PERFECT!!";
+                        color = "#ffbe2e";
+                        isPerf = true;
+                    } else if (distToTarget < 38) {
+                        addedScore = 15;
+                        rating = "GREAT!";
+                        color = "#2ecc71";
+                    }
+
+                    combo++;
+                    score += addedScore;
+                    scoreVal.textContent = score;
+                    comboVal.textContent = combo;
+
+                    playHitSound(isPerf);
+                    spawnParticles(n.x, n.y, color);
+                    addRatingText(rating, canvas.width / 2, TARGET_Y - 40, color);
+
+                    notes.splice(i, 1);
+                    hitFound = true;
+
+                    if (score >= 100) {
+                        endGame(true);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    function handlePointer(e) {
+        if (!isGameRunning) return;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const laneIndex = Math.floor(clickX / LANE_WIDTH);
+        if (laneIndex >= 0 && laneIndex < LANE_COUNT) {
+            triggerLaneHit(laneIndex);
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        const laneIdx = KEY_MAPPING.indexOf(key);
+        if (laneIdx !== -1) {
+            triggerLaneHit(laneIdx);
+        } else if (key >= '1' && key <= '4') {
+            triggerLaneHit(parseInt(key) - 1);
+        }
+    });
+
+    canvas.addEventListener('pointerdown', handlePointer);
+
+    function startGame() {
+        initAudio();
+        startOverlay.style.display = 'none';
+        winOverlay.style.display = 'none';
+        loseOverlay.style.display = 'none';
+
+        score = 0;
+        combo = 0;
+        lives = 5;
+        notes = [];
+        particles = [];
+        ratingTexts = [];
+
+        scoreVal.textContent = '0';
+        comboVal.textContent = '0';
+
+        isGameRunning = true;
+        startBGM();
+    }
+
+    function resetGame() {
+        startGame();
+    }
+
+    function endGame(isWin) {
+        isGameRunning = false;
+        stopBGM();
+
+        if (isWin) {
+            winOverlay.style.display = 'flex';
+        } else {
+            loseOverlay.style.display = 'flex';
+        }
+    }
+
+    function drawBackground() {
+        // 배경 세로 트랙 구분선
+        ctx.fillStyle = '#070709';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = '#181b20';
+        ctx.lineWidth = 1;
+
+        for (let i = 1; i < LANE_COUNT; i++) {
+            const x = i * LANE_WIDTH;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+
+        // 상단 레인 심볼 기호 (Δ, ∇)
+        ctx.fillStyle = '#4a505a';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < LANE_COUNT; i++) {
+            const x = i * LANE_WIDTH + LANE_WIDTH / 2;
+            ctx.fillText(LANE_SYMBOLS[i], x, 40);
+        }
+    }
+
+    function drawTargetLine() {
+        // 주황색 가로 글로우 타겟 라인
+        ctx.strokeStyle = '#d35400';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, TARGET_Y);
+        ctx.lineTo(canvas.width, TARGET_Y);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ff7b00';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#ff7b00';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(0, TARGET_Y);
+        ctx.lineTo(canvas.width, TARGET_Y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // 4개의 원형 레인 타겟 링
+        for (let i = 0; i < LANE_COUNT; i++) {
+            const x = i * LANE_WIDTH + LANE_WIDTH / 2;
+
+            ctx.beginPath();
+            ctx.arc(x, TARGET_Y, 22, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e67e22';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#e67e22';
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function update() {
+        drawBackground();
+        drawTargetLine();
+
+        if (isGameRunning) {
+            // 태양/불꽃 노드 애니메이션
+            for (let i = 0; i < notes.length; i++) {
+                let n = notes[i];
+                n.y += n.speed;
+
+                // 노드 그리기 (중심은 노란색, 외곽은 글로우 주황색)
+                ctx.save();
+                const grad = ctx.createRadialGradient(n.x, n.y, 2, n.x, n.y, n.radius);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, '#ffcc00');
+                grad.addColorStop(0.8, '#ff6600');
+                grad.addColorStop(1, 'rgba(255, 102, 0, 0)');
+
+                ctx.fillStyle = grad;
+                ctx.shadowColor = '#ff9900';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, n.radius * 1.3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Miss 처리
+                if (n.y > TARGET_Y + 45) {
+                    notes.splice(i, 1);
+                    i--;
+                    lives--;
+                    combo = 0;
+                    comboVal.textContent = '0';
+                    playMissSound();
+                    addRatingText("MISS!", canvas.width / 2, TARGET_Y + 10, "#ff4d4d");
+
+                    if (lives <= 0) {
+                        endGame(false);
+                    }
+                }
+            }
+        }
+
+        // 파티클 업데이트
+        for (let i = 0; i < particles.length; i++) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= p.decay;
+
+            if (p.alpha <= 0) {
+                particles.splice(i, 1);
+                i--;
+                continue;
+            }
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // 판정 문구 텍스트
+        for (let i = 0; i < ratingTexts.length; i++) {
+            let r = ratingTexts[i];
+            r.y += r.vy;
+            r.alpha -= 0.02;
+
+            if (r.alpha <= 0) {
+                ratingTexts.splice(i, 1);
+                i--;
+                continue;
+            }
+
+            ctx.save();
+            ctx.fillStyle = r.color;
+            ctx.font = '900 28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = r.color;
+            ctx.shadowBlur = 10;
+            ctx.globalAlpha = r.alpha;
+            ctx.fillText(r.text, r.x, r.y);
+            ctx.restore();
+        }
+
+        requestAnimationFrame(update);
+    }
+
+    update();
+</script>
+</body>
+</html>
